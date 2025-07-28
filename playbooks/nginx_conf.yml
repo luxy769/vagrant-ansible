@@ -1,16 +1,20 @@
 ---
-
-- name: configure webserver with nginx
+- name: Configure webserver with nginx and TLS
   hosts: web
   become: true
 
+  vars:
+    tls_dir: /etc/nginx/tls
+    key_file: files/nginx.key
+    cert_file: files/nginx.crt
+
   tasks:
-    - name: ensure nginx is installed
+    - name: Ensure nginx is installed
       package:
         name: nginx
         update_cache: true
 
-    - name: copy nginx config file
+    - name: Copy nginx config file
       copy:
         src: nginx.conf
         dest: /etc/nginx/sites-available/default
@@ -21,14 +25,40 @@
         dest: /etc/nginx/sites-enabled/default
         state: link
 
-    - name: copy home page template
+    - name: Install home page
       template:
         src: index.html.j2
         dest: /usr/share/nginx/html/index.html
+        mode: '0644'
 
-    - name: restart nginx
+    - name: Create directories for TLS cert
+      file:
+        path: "{{ tls_dir }}"
+        state: directory
+        mode: '0750'
+
+    - name: Copy TLS files
+      copy:
+        src: "{{ item }}"
+        dest: "{{ tls_dir }}/{{ item | basename }}"
+        mode: '0600'
+      loop:
+        - "{{ key_file }}"
+        - "{{ cert_file }}"
+
+    - name: Restart nginx
       service:
         name: nginx
         state: restarted
 
-...
+    - name: Test HTTPS page
+      delegate_to: localhost
+      become: false
+      uri:
+        url: 'https://{{ inventory_hostname }}:443/index.html'
+        validate_certs: false
+        return_content: true
+      register: this
+      failed_when: "'Hello' not in this.content"
+      tags:
+        - test
