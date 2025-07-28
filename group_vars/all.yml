@@ -1,0 +1,9 @@
+---
+#alias variable for all hosts
+new_user: luxy
+admin_users:
+  - luxy
+  - deploy
+
+
+ssh_pub_key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
