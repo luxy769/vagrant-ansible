@@ -13,8 +13,63 @@
         name: nginx
         state: started
         enabled: yes
-
-    - name: Install docker
+    - name: Install dependencies
       apt:
-        name: docker.io
+        name:
+          - git
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
         state: present
+        update_cache: yes
+
+    - name: Download Docker GPG key
+      get_url:
+        url: https://download.docker.com/linux/debian/gpg
+        dest: /tmp/docker.gpg
+
+    - name: Convert GPG key to dearmor format
+      command: gpg --dearmor -o /usr/share/keyrings/docker.gpg /tmp/docker.gpg
+      args:
+        creates: /usr/share/keyrings/docker.gpg
+
+    - name: Add Docker APT repository
+      apt_repository:
+        repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/docker.gpg] https://download.docker.com/linux/debian {{ ansible_distribution_release }} stable"
+        state: present
+
+    - name: Install Docker Engine and Compose v2
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-compose-plugin
+        state: present
+        update_cache: yes
+
+    - name: Enable and start Docker service
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Configure nginx proxy
+      template:
+        src: nginx-proxy.conf.j2
+        dest: /etc/nginx/sites-available/default
+#      notify: Restart nginx
+
+    - name: Test nginx conf
+      command: nginx -t
+      register: nginx_test
+      changed_when: false
+      notify: Restart nginx
+
+  handlers:
+    - name: restart nginx
+      service:
+        name: nginx
+        state: restarted

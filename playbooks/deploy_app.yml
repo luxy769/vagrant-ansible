@@ -1,0 +1,26 @@
+---
+- name: clone git repo and run docker-compose
+  hosts: web
+  become: true
+
+  vars:
+    repo_url: https://github.com/luxy769/todo_fastapi.git
+    dest_dir: "/opt/myapp"
+
+  tasks:
+    - name: clone repo
+      git:
+        repo: "{{ repo_url }}"
+        dest: "{{ dest_dir }}"
+        version: "master"
+        force: yes
+
+    - name: run docker-compose up
+      community.docker.docker_compose_v2:
+        project_src: "{{ dest_dir }}"
+        state: present
+      register: compose_result
+
+    - name: show docker-compose output
+      debug:
+        var: compose_result

@@ -1,2 +1,3 @@
 - import_playbook: base.yml
 - import_playbook: web.yml
+- import_playbook: deploy_app.yml
